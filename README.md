@@ -6,6 +6,12 @@ LLM Prompt Guardrails using embedding-based similarity matching for business app
 
 GuardRail Wonder is a lightweight, efficient guardrail system that validates LLM prompts against predefined business use cases. It uses embedding similarity to ensure users only ask relevant questions, preventing off-topic queries and potential security issues.
 
+**NEW:** We now offer two guardrail implementations:
+1. **Original**: Single-template similarity matching with global thresholds
+2. **Centroid-based**: Multi-paraphrase centroid matching with per-intent thresholds and LLM verification
+
+See [CENTROID_GUARDRAIL.md](CENTROID_GUARDRAIL.md) for details on the enhanced centroid-based approach.
+
 ## How It Works
 
 ```
@@ -24,10 +30,11 @@ User Prompt → Embed (1×n) → Compare with Predefined (7×n) → Cosine Simil
 
 - **Fast**: Pre-computed embeddings, O(n) inference time
 - **Simple**: Matrix multiplication-based similarity
-- **Flexible**: Tiered threshold system
+- **Flexible**: Tiered threshold system (global or per-intent)
 - **Observable**: Comprehensive logging and monitoring
 - **MCP-Ready**: Can be exposed as Model Context Protocol tool
 - **Type-Safe**: Full Pydantic models with validation
+- **Two Variants**: Choose between original or enhanced centroid-based approach
 
 ## Quick Start
 
@@ -110,25 +117,33 @@ explanation = tool.explain_rejection("Tell me a joke")
 ```
 GuardRailWonder/
 ├── src/guardrails/          # Main package
-│   ├── core.py              # Core guardrail system
+│   ├── core.py              # Core guardrail system (original)
+│   ├── centroid_guardrail.py # Centroid-based guardrail (enhanced)
 │   ├── embeddings.py        # Embedding providers
 │   ├── models.py            # Pydantic models
 │   ├── mcp_tool.py          # MCP tool wrapper
 │   └── utils.py             # Utility functions
 ├── config/                  # Configuration files
-│   ├── predefined_prompts.json
-│   └── config.json
+│   ├── predefined_prompts.json      # Original guardrail config
+│   └── intent_paraphrases.json      # Centroid guardrail config
 ├── tests/                   # Comprehensive tests
 ├── examples/                # Usage examples
+├── app.py                   # FastAPI server for centroid guardrail
+├── tune.py                  # Offline tuning utilities
 ├── logs/                    # Application logs
-└── data/embeddings/         # Cached embeddings
+└── data/                    # Cached embeddings and centroids
 ```
 
 ## Examples
 
-### Run Basic Example
+### Run Basic Example (Original Guardrail)
 ```bash
 python examples/basic_usage.py
+```
+
+### Run Centroid-Based Example
+```bash
+python examples/centroid_usage.py
 ```
 
 ### Run MCP Example
@@ -139,6 +154,11 @@ python examples/mcp_usage.py
 ### Analyze Rejection Logs
 ```bash
 python examples/analyze_logs.py
+```
+
+### Start FastAPI Server (Centroid-Based)
+```bash
+python app.py
 ```
 
 ## Configuration

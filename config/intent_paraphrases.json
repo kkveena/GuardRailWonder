@@ -1,0 +1,127 @@
+{
+  "intent_paraphrases": {
+    "check_balance": [
+      "What's my account balance?",
+      "show balance",
+      "balance please",
+      "current balance",
+      "how much do I have?",
+      "what's my balance",
+      "account balance check",
+      "check my account",
+      "show me my balance"
+    ],
+    "make_payment": [
+      "I want to pay my bill",
+      "make a payment",
+      "pay now",
+      "process payment",
+      "submit payment",
+      "pay my bill",
+      "make bill payment",
+      "I'd like to pay"
+    ],
+    "refund_status": [
+      "Where is my refund?",
+      "refund status",
+      "track my refund",
+      "when will I get my refund?",
+      "check refund status",
+      "refund tracking",
+      "has my refund been processed",
+      "refund inquiry"
+    ],
+    "update_address": [
+      "change my address",
+      "update address",
+      "edit mailing address",
+      "modify my address",
+      "update shipping address",
+      "change shipping address",
+      "update my mailing address"
+    ],
+    "report_issue": [
+      "report a problem",
+      "something is broken",
+      "file a complaint",
+      "submit a problem",
+      "report an issue",
+      "I have a problem",
+      "there's an issue",
+      "something isn't working"
+    ],
+    "cancel_order": [
+      "cancel my order",
+      "I want to cancel",
+      "stop the order",
+      "cancel order",
+      "I need to cancel my order",
+      "can I cancel",
+      "cancel my purchase",
+      "stop my order"
+    ],
+    "contact_agent": [
+      "talk to a human",
+      "contact support",
+      "connect me to an agent",
+      "speak to representative",
+      "human support",
+      "live agent",
+      "talk to someone",
+      "speak to a person",
+      "customer service"
+    ]
+  },
+  "intent_thresholds": {
+    "check_balance": 0.72,
+    "make_payment": 0.72,
+    "refund_status": 0.70,
+    "update_address": 0.70,
+    "report_issue": 0.68,
+    "cancel_order": 0.70,
+    "contact_agent": 0.65
+  },
+  "intent_metadata": {
+    "check_balance": {
+      "description": "Check account balance inquiries",
+      "category": "account_management",
+      "route": "balance_service"
+    },
+    "make_payment": {
+      "description": "Payment processing requests",
+      "category": "billing",
+      "route": "payment_service"
+    },
+    "refund_status": {
+      "description": "Refund status and tracking",
+      "category": "refund_support",
+      "route": "refund_service"
+    },
+    "update_address": {
+      "description": "Address update requests",
+      "category": "account_management",
+      "route": "profile_service"
+    },
+    "report_issue": {
+      "description": "Problem and complaint reporting",
+      "category": "support",
+      "route": "issue_service"
+    },
+    "cancel_order": {
+      "description": "Order cancellation requests",
+      "category": "order_management",
+      "route": "order_service"
+    },
+    "contact_agent": {
+      "description": "Human agent contact requests",
+      "category": "support",
+      "route": "agent_service"
+    }
+  },
+  "config": {
+    "gray_band_delta": 0.05,
+    "min_margin": 0.04,
+    "version": "1.0",
+    "last_updated": "2025-11-01"
+  }
+}
