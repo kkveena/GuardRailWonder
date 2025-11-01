@@ -1,0 +1,51 @@
+{
+  "prompts": [
+    {
+      "id": "customer_inquiry",
+      "template": "What is the status of my order?",
+      "category": "order_management",
+      "description": "Customer asking about order status"
+    },
+    {
+      "id": "product_info",
+      "template": "Tell me about your product features and pricing",
+      "category": "product_information",
+      "description": "Request for product information"
+    },
+    {
+      "id": "refund_request",
+      "template": "I would like to request a refund for my purchase",
+      "category": "refund_support",
+      "description": "Customer refund requests"
+    },
+    {
+      "id": "technical_support",
+      "template": "I'm having technical issues with the application",
+      "category": "technical_support",
+      "description": "Technical support requests"
+    },
+    {
+      "id": "account_management",
+      "template": "How do I update my account information?",
+      "category": "account_management",
+      "description": "Account-related queries"
+    },
+    {
+      "id": "billing_inquiry",
+      "template": "I have a question about my billing statement",
+      "category": "billing",
+      "description": "Billing and payment questions"
+    },
+    {
+      "id": "general_inquiry",
+      "template": "What services does your company provide?",
+      "category": "general_info",
+      "description": "General company information"
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2025-11-01",
+    "total_prompts": 7
+  }
+}
