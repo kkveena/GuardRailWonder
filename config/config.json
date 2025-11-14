@@ -1,6 +1,6 @@
 {
-  "threshold_high": 0.8,
-  "threshold_medium": 0.5,
+  "threshold_high": 0.90,
+  "threshold_medium": 0.85,
   "log_rejections": true,
   "log_file": "logs/guardrail.log",
   "embedding_model": "models/embedding-001",
