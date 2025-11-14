@@ -81,8 +81,8 @@ def test_guardrail_initialization():
 
     try:
         config = GuardrailConfig(
-            threshold_high=0.8,
-            threshold_medium=0.5,
+            threshold_high=0.9,
+            threshold_medium=0.85,
             log_rejections=True,
             embedding_model="models/embedding-001"
         )

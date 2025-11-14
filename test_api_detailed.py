@@ -36,7 +36,8 @@ except Exception as e:
 
 # Try text generation
 print("\n2. Testing: Text generation...")
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+#url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
 
 data = {
     "contents": [{

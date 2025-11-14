@@ -37,15 +37,15 @@
       "description": "Billing and payment questions"
     },
     {
-      "id": "general_inquiry",
-      "template": "What services does your company provide?",
-      "category": "general_info",
-      "description": "General company information"
+      "id": "company_hours",
+      "template": "What are your business hours and location?",
+      "category": "business_info",
+      "description": "Business hours and contact information"
     }
   ],
   "metadata": {
-    "version": "1.0",
-    "last_updated": "2025-11-01",
+    "version": "1.1",
+    "last_updated": "2025-11-11",
     "total_prompts": 7
   }
 }
