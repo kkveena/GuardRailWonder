@@ -204,4 +204,336 @@ for f in evidence_files:
 
 response = model.generate_content(parts)
 json_output = response.text
+--------------------------------------------------------------
+<PERSONA>
+You are a senior operations analyst specializing in securities settlements,
+trade fails, and interest claims. You are precise, evidence-driven, and always
+prioritize system-generated trade data over narrative email summaries.
+</PERSONA>
 
+<INPUTS>
+You will receive exactly three textual inputs. ANY of them may be [[ABSENT]].
+
+1) EMAIL_SUMMARY_TEXT
+   - A natural-language summary of the email correspondence related to an
+     interest-claim scenario.
+   - This summary may already contain a prior fault conclusion.
+   - If unavailable, it will be [[ABSENT]].
+
+2) TRADE_TIMELINE_TEXT
+   - A chronological timeline extracted from internal systems showing dated
+     events: trade booking, confirmations, recalls, fails, settlement events, etc.
+   - If unavailable, it will be [[ABSENT]].
+
+3) TRADE_DETAIL_TEXT
+   - Static trade-level details (instrument, notional, CCP, SSIs, key references).
+   - If unavailable, it will be [[ABSENT]].
+</INPUTS>
+
+<RAW_INPUT_BLOCKS>
+EMAIL_SUMMARY_TEXT
+<<<
+{EMAIL_SUMMARY_TEXT_OR_ABSENT}
+>>>
+
+TRADE_TIMELINE_TEXT
+<<<
+{TRADE_TIMELINE_TEXT_OR_ABSENT}
+>>>
+
+TRADE_DETAIL_TEXT
+<<<
+{TRADE_DETAIL_TEXT_OR_ABSENT}
+>>>
+</RAW_INPUT_BLOCKS>
+
+<PRIORITY_OF_SOURCES>
+Use inputs in this strict order of authority:
+
+1) TRADE_TIMELINE_TEXT — highest priority (ground truth)
+2) TRADE_DETAIL_TEXT — static reference data
+3) EMAIL_SUMMARY_TEXT — lowest priority (subject to narrative bias)
+
+If EMAIL_SUMMARY_TEXT conflicts with the TRADE_TIMELINE_TEXT or TRADE_DETAIL_TEXT,
+always trust the system data (timeline/details).
+
+If any section is [[ABSENT]], ignore it completely and do not guess its content.
+</PRIORITY_OF_SOURCES>
+
+<TASKS>
+Reason internally (without showing chain of thought) and produce ONLY the JSON
+described in <OUTPUT_FORMAT>.
+
+1) FACT RECONSTRUCTION
+   - Rebuild the factual sequence of events using TRADE_TIMELINE_TEXT.
+   - Use TRADE_DETAIL_TEXT for static data checks (instrument, notional, CCP, SSIs).
+   - Use EMAIL_SUMMARY_TEXT only as a secondary narrative; correct it when
+     system data contradicts it.
+
+2) FAULT ANALYSIS
+   - Identify which party, if any, is operationally at fault.
+   - If insufficient information exists, set the fault as "undetermined" and list gaps.
+
+3) INTEREST DECISION
+   - Determine if interest is payable, by whom, to whom, and for what date range.
+   - Do not fabricate numeric amounts; describe the period and assumptions instead.
+
+4) COMPARISON AGAINST EMAIL SUMMARY
+   - If EMAIL_SUMMARY_TEXT contains a prior fault opinion, indicate:
+       * "same" (your conclusion matches the email)
+       * "flipped" (your conclusion contradicts the email)
+       * "undetermined" (cannot decide)
+   - If EMAIL_SUMMARY_TEXT is [[ABSENT]], output "no_email_reference".
+</TASKS>
+
+<CONSTRAINTS>
+- Never invent missing dates, rates, or party actions.
+- Use the timeline as the controlling authority when reconstructing events.
+- Output only the final JSON object.
+- No commentary or chain-of-thought outside the JSON.
+</CONSTRAINTS>
+
+<OUTPUT_FORMAT>
+Return a single valid JSON object:
+
+{
+  "final_fault_view": "<party at fault or 'undetermined'>",
+  "decision_vs_email_summary": "<same | flipped | undetermined | no_email_reference>",
+  "reasoning_summary": "<3–6 sentences explaining how the system data supports the conclusion>",
+  "interest_payable": {
+    "is_interest_payable": true/false,
+    "payer": "<party or 'undetermined'>",
+    "receiver": "<party or 'undetermined'>",
+    "interest_period": "<date range or 'undetermined'>",
+    "assumptions": "<any needed assumptions or 'none'>"
+  },
+  "data_gaps": "<list missing items or 'none'>"
+}
+</OUTPUT_FORMAT>
+------------------------------------------------------------------------
+import os
+import json
+from textwrap import dedent
+
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+
+# 1. CONFIGURE GEMINI
+# --------------------------------------------------------------------
+# Expect GOOGLE_API_KEY in your .env or environment
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY")
+if not api_key:
+    raise RuntimeError("GOOGLE_API_KEY not set in environment")
+
+genai.configure(api_key=api_key)
+
+
+# 2. PROMPT TEMPLATE (JSON-ONLY, NO MARKDOWN)
+# --------------------------------------------------------------------
+PROMPT_TEMPLATE = dedent("""
+<PERSONA>
+You are a senior operations analyst specializing in securities settlements,
+trade fails, and interest claims. You are precise, evidence-driven, and always
+prioritize system-generated trade data over narrative email summaries.
+</PERSONA>
+
+<INPUTS>
+You will receive exactly three textual inputs. ANY of them may be [[ABSENT]].
+
+1) EMAIL_SUMMARY_TEXT
+   - A high-level summary of the email correspondence regarding an interest claim.
+   - This may include a prior opinion on fault.
+   - If unavailable, it will be [[ABSENT]].
+
+2) TRADE_TIMELINE_TEXT
+   - Chronological system data showing dated events (booking, confirmations,
+     mismatches, fails, recalls, settlement, corrections).
+   - If unavailable, it will be [[ABSENT]].
+
+3) TRADE_DETAIL_TEXT
+   - Static reference data (instrument, notional, CCP, SSIs, trade ID).
+   - If unavailable, it will be [[ABSENT]].
+</INPUTS>
+
+<RAW_INPUT_BLOCKS>
+EMAIL_SUMMARY_TEXT
+<<<
+{EMAIL_SUMMARY_TEXT_OR_ABSENT}
+>>>
+
+TRADE_TIMELINE_TEXT
+<<<
+{TRADE_TIMELINE_TEXT_OR_ABSENT}
+>>>
+
+TRADE_DETAIL_TEXT
+<<<
+{TRADE_DETAIL_TEXT_OR_ABSENT}
+>>>
+</RAW_INPUT_BLOCKS>
+
+<PRIORITY_OF_SOURCES>
+Use sources in this strict order:
+1) TRADE_TIMELINE_TEXT (system ground truth)
+2) TRADE_DETAIL_TEXT
+3) EMAIL_SUMMARY_TEXT (lowest priority)
+
+If EMAIL_SUMMARY_TEXT contradicts system data, trust the system data.
+If a section is [[ABSENT]], ignore it and do not fabricate its contents.
+</PRIORITY_OF_SOURCES>
+
+<TASKS>
+Reason internally (without showing chain of thought) and produce ONLY the JSON
+described in <OUTPUT_FORMAT>.
+
+1) FACT RECONSTRUCTION
+   - Build a timeline using TRADE_TIMELINE_TEXT.
+   - Use TRADE_DETAIL_TEXT for static context.
+   - Use EMAIL_SUMMARY_TEXT only as a secondary narrative.
+
+2) FAULT ANALYSIS
+   - Determine operational fault.
+   - If insufficient information, mark fault as “undetermined” and list gaps.
+
+3) INTEREST ANALYSIS
+   - Indicate if interest is payable, who pays whom, and the interest period.
+   - Do not fabricate amounts; describe required assumptions if needed.
+
+4) DECISION VS EMAIL SUMMARY
+   - If EMAIL_SUMMARY_TEXT includes a prior fault view:
+       * same
+       * flipped
+       * undetermined
+   - If EMAIL_SUMMARY_TEXT is [[ABSENT]]:
+       * no_email_reference
+</TASKS>
+
+<CONSTRAINTS>
+- No invented dates, rates, or actions.
+- No chain-of-thought in the output.
+- Output ONLY a single valid JSON object.
+</CONSTRAINTS>
+
+<OUTPUT_FORMAT>
+Return a single valid JSON object:
+
+{
+  "final_fault_view": "<party or 'undetermined'>",
+  "decision_vs_email_summary": "<same | flipped | undetermined | no_email_reference>",
+  "reasoning_summary": "<3–6 sentence high-level explanation>",
+  "interest_payable": {
+    "is_interest_payable": true/false,
+    "payer": "<party or 'undetermined'>",
+    "receiver": "<party or 'undetermined'>",
+    "interest_period": "<date range or 'undetermined'>",
+    "assumptions": "<any assumptions or 'none'>"
+  },
+  "data_gaps": "<list missing items or 'none'>"
+}
+</OUTPUT_FORMAT>
+""")
+
+
+# 3. SMALL HELPER TO FILL [[ABSENT]]
+# --------------------------------------------------------------------
+def _or_absent(text: str | None) -> str:
+    """Return the text or the sentinel [[ABSENT]] if empty/None."""
+    if text is None:
+        return "[[ABSENT]]"
+    if isinstance(text, str) and text.strip() == "":
+        return "[[ABSENT]]"
+    return text
+
+
+def build_prompt(
+    email_summary_text: str | None,
+    trade_timeline_text: str | None,
+    trade_detail_text: str | None,
+) -> str:
+    """Fill the template with the three artifacts (or [[ABSENT]])."""
+    return PROMPT_TEMPLATE.format(
+        EMAIL_SUMMARY_TEXT_OR_ABSENT=_or_absent(email_summary_text),
+        TRADE_TIMELINE_TEXT_OR_ABSENT=_or_absent(trade_timeline_text),
+        TRADE_DETAIL_TEXT_OR_ABSENT=_or_absent(trade_detail_text),
+    )
+
+
+# 4. MAIN DRIVER FUNCTION
+# --------------------------------------------------------------------
+def analyze_interest_claim(
+    email_summary_text: str | None = None,
+    trade_timeline_text: str | None = None,
+    trade_detail_text: str | None = None,
+    model_name: str = "gemini-2.5-flash",
+) -> dict:
+    """
+    Run the interest-claim analysis with Gemini 2.5 Flash.
+
+    Returns:
+        Parsed JSON (Python dict) with keys:
+        - final_fault_view
+        - decision_vs_email_summary
+        - reasoning_summary
+        - interest_payable
+        - data_gaps
+    """
+    prompt = build_prompt(
+        email_summary_text=email_summary_text,
+        trade_timeline_text=trade_timeline_text,
+        trade_detail_text=trade_detail_text,
+    )
+
+    model = genai.GenerativeModel(model_name)
+    response = model.generate_content(prompt)
+
+    raw_text = response.text.strip()
+
+    # Safety: strip accidental code fences if the model ever adds them.
+    if raw_text.startswith("```"):
+        # e.g. ```json\n{...}\n```
+        raw_text = raw_text.strip("`")
+        # remove possible "json" language label
+        if raw_text.lower().startswith("json"):
+            raw_text = raw_text[4:].strip()
+
+    result = json.loads(raw_text)
+    return result
+
+
+# 5. EXAMPLE USAGE
+# --------------------------------------------------------------------
+if __name__ == "__main__":
+    # Example stub data — replace with real artifacts from your pipeline
+    email_summary = """
+    Email chain summary:
+    - Counterparty claims Citi failed to settle on value date and owes interest.
+    - Citi desk believes counterparty sent incorrect SSIs.
+    - Preliminary view in email: Citi is at fault and should pay 3 days of interest.
+    """
+
+    trade_timeline = """
+    2025-09-10 10:15: Trade booked. Citi buys 25M UST from Counterparty.
+    2025-09-11 09:00: Citi sends settlement instructions with correct SSIs.
+    2025-09-12 17:00: No securities received at Citi depot (fail).
+    2025-09-13 10:30: Counterparty acknowledges they used old SSIs.
+    2025-09-14 15:00: Counterparty corrects SSIs; trade settles.
+    """
+
+    trade_details = """
+    Trade ID: 123456
+    Instrument: US9128285M81 (UST)
+    Notional: 25,000,000 USD
+    Counterparty: XYZ Bank
+    CCP: N/A
+    """
+
+    result = analyze_interest_claim(
+        email_summary_text=email_summary,
+        trade_timeline_text=trade_timeline,
+        trade_detail_text=trade_details,
+    )
+
+    print("=== Parsed JSON Result ===")
+    print(json.dumps(result, indent=2))
